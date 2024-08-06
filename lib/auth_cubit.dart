@@ -1,7 +1,5 @@
 import 'dart:async';
-
 import 'package:bloc/bloc.dart';
-import 'package:flutter/material.dart';
 import 'package:rownd_flutter_plugin/rownd.dart';
 import 'package:rownd_flutter_plugin/rownd_platform_interface.dart';
 import 'package:rownd_flutter_plugin/state/global_state.dart';
@@ -10,37 +8,37 @@ enum AuthState { authenticated, unauthenticated, loading }
 
 class AuthCubit extends Cubit<AuthState> {
   final RowndPlugin rowndPlugin;
+  final GlobalStateNotifier rowndNotifier;
 
-  AuthCubit(this.rowndPlugin) : super(AuthState.unauthenticated);
+  AuthCubit(this.rowndPlugin, this.rowndNotifier) : super(AuthState.unauthenticated) {
+    // Initialize the cubit by setting up a listener to the authentication state
+    _initialize();
+  }
 
-  void initialize(GlobalStateNotifier rownd) {
-    // Add a listener to the GlobalStateNotifier to check authentication on changes
-    rownd.addListener(() {
-      checkAuthentication(rownd);
+  void _initialize() {
+    rowndNotifier.addListener(() {
+      checkAuthentication();
     });
   }
 
-  void checkAuthentication(GlobalStateNotifier rownd) {
-    if (rownd.state.auth?.isAuthenticated ?? false) {
+  void checkAuthentication() {
+    if (rowndNotifier.state.auth?.isAuthenticated ?? false) {
       emit(AuthState.authenticated);
     } else {
       emit(AuthState.unauthenticated);
     }
   }
 
-  Future<void> signInOrOut(
-      BuildContext context, GlobalStateNotifier rownd) async {
-    if (rownd.state.auth?.isAuthenticated ?? false) {
-      rowndPlugin.signOut();
-      emit(AuthState.unauthenticated);
-    } else {
-      emit(AuthState.loading);
-      RowndSignInOptions signInOpts = RowndSignInOptions();
-      rowndPlugin.requestSignIn(signInOpts);
-    }
+   Future<void> signIn() async {
+    emit(AuthState.loading);
+    RowndSignInOptions signInOpts = RowndSignInOptions();
+    rowndPlugin.requestSignIn(signInOpts);
   }
 
-  
+  Future<void> signOut() async {
+      rowndPlugin.signOut();
+      emit(AuthState.unauthenticated);
+  }
 
   void logout() {
     emit(AuthState.unauthenticated);

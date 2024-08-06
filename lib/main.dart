@@ -1,10 +1,7 @@
 import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 import 'package:rownd_flutter_plugin/rownd.dart';
-import 'package:rownd_flutter_plugin/state/global_state.dart';
-
 import 'auth_cubit.dart';
 
 void main() {
@@ -21,48 +18,37 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   // String _platformVersion = 'Unknown';
   final rowndPlugin = RowndPlugin();
-  late AuthCubit authCubit;
 
   @override
   void initState() {
     super.initState();
     rowndPlugin.configure("key_rvykyqmv3pt3rfqqao0mq9xt");
-    // Initialize AuthCubit here
-    authCubit = AuthCubit(rowndPlugin);
-    // Initialize the authCubit with the GlobalStateNotifier
-    authCubit.initialize(rowndPlugin.state());
   }
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => rowndPlugin.state()),
-        Provider(create: (_) => rowndPlugin),
-      ],
+    return BlocProvider(
+      create: (context) => AuthCubit(rowndPlugin, rowndPlugin.state()),
       child: MaterialApp(
         title: 'Namer App',
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         ),
-        home: BlocProvider.value(
-          value: authCubit,
-          child: BlocListener<AuthCubit, AuthState>(
-            listener: (context, state) {
+        home: BlocListener<AuthCubit, AuthState>(
+          listener: (context, state) {
+            if (state == AuthState.authenticated) {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          },
+          child: BlocBuilder<AuthCubit, AuthState>(
+            builder: (context, state) {
               if (state == AuthState.authenticated) {
-                Navigator.pushReplacementNamed(context, '/home');
+                return MyHomePage();
+              } else {
+                return LoginPage();
               }
             },
-            child: BlocBuilder<AuthCubit, AuthState>(
-              builder: (context, state) {
-                if (state == AuthState.authenticated) {
-                  return MyHomePage();
-                } else {
-                  return LoginPage();
-                }
-              },
-            ),
           ),
         ),
         routes: {
@@ -84,13 +70,11 @@ class LoginPage extends StatelessWidget {
       ),
       body: Column(children: [
         Center(child: Text('Welcome to my example app!')),
-        Consumer<GlobalStateNotifier>(builder: (_, rownd, __) {
-          return ElevatedButton(
-              onPressed: () async {
-                context.read<AuthCubit>().signInOrOut(context, rownd);
-              },
-              child: Text('Sign in'));
-        }),
+        ElevatedButton(
+            onPressed: () async {
+              context.read<AuthCubit>().signIn();
+            },
+            child: Text('Sign in'))
       ]),
     );
   }
@@ -163,11 +147,12 @@ class _MyHomePageState extends State<MyHomePage> {
                 selectedIndex: selectedIndex,
                 onDestinationSelected: (value) {
                   if (value == 2) {
-                    var rowndPlugin =
-                        Provider.of<RowndPlugin>(context, listen: false);
-                    rowndPlugin.signOut();
-                    Navigator.pushReplacementNamed(context,
-                        '/'); // Optional: Navigate back to the login page
+                    // Use the AuthCubit to sign out
+                    final authCubit = context.read<AuthCubit>();
+                    // Call signOut method of AuthCubit
+                    authCubit.signOut();
+                    // Navigate back to the login page
+                    Navigator.pushReplacementNamed(context, '/');
                   } else {
                     setState(() {
                       selectedIndex = value;
