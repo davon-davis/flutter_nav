@@ -8,39 +8,45 @@ enum AuthState { authenticated, unauthenticated, loading }
 
 class AuthCubit extends Cubit<AuthState> {
   final RowndPlugin rowndPlugin;
-  final GlobalStateNotifier rowndNotifier;
+  final GlobalStateNotifier rowndStateNotifier;
 
-  AuthCubit(this.rowndPlugin, this.rowndNotifier) : super(AuthState.unauthenticated) {
+  AuthCubit(this.rowndPlugin)
+      : rowndStateNotifier = rowndPlugin.state(), // Assign directly in initializer list
+        super(AuthState.unauthenticated) {
     // Initialize the cubit by setting up a listener to the authentication state
     _initialize();
   }
 
   void _initialize() {
-    rowndNotifier.addListener(() {
+    rowndStateNotifier.addListener(() {
       checkAuthentication();
     });
   }
 
   void checkAuthentication() {
-    if (rowndNotifier.state.auth?.isAuthenticated ?? false) {
+    if (rowndStateNotifier.state.auth?.isAuthenticated ?? false) {
       emit(AuthState.authenticated);
     } else {
       emit(AuthState.unauthenticated);
     }
   }
 
-   Future<void> signIn() async {
+  Future<void> signIn() async {
     emit(AuthState.loading);
     RowndSignInOptions signInOpts = RowndSignInOptions();
     rowndPlugin.requestSignIn(signInOpts);
   }
 
   Future<void> signOut() async {
-      rowndPlugin.signOut();
-      emit(AuthState.unauthenticated);
+    rowndPlugin.signOut();
+    emit(AuthState.unauthenticated);
   }
 
   void logout() {
     emit(AuthState.unauthenticated);
+  }
+
+  bool isAuthenticated() {
+    return rowndStateNotifier.state.auth?.isAuthenticated ?? false;
   }
 }
